@@ -45,6 +45,7 @@ Options:
 	•	-R: Recursively copy directories.
 	•	-p: Preserve file permissions.
 	•	-u: Update only.
+	•	-d: Use Debug Mode.
 
 Examples:
 
@@ -55,7 +56,7 @@ Examples:
 
 2.	Recursively clone a directory:
 
-	`./cf -R source_dir/ target_dir/
+	`./cf -R source_dir/ target_dir/`
 
 
 3.	Backup existing files:
