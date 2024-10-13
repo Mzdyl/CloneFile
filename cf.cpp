@@ -27,9 +27,13 @@ bool clone_file(const fs::path& source, const fs::path& target, uint32_t flags =
     return true;
 }
 
+// 比较两个文件的最后修改时间
+bool is_newer(const fs::path& source, const fs::path& target) {
+    return fs::last_write_time(source) > fs::last_write_time(target);
+}
 
 // 递归复制目录
-bool copy_directory(const fs::path& source, const fs::path& target, bool preserve_permissions, bool backup) {
+bool copy_directory(const fs::path& source, const fs::path& target, bool preserve_permissions, bool backup, bool update) {
     try {
         for (const auto& entry : fs::directory_iterator(source)) {
             const auto& path = entry.path();
@@ -37,19 +41,23 @@ bool copy_directory(const fs::path& source, const fs::path& target, bool preserv
             
             if (fs::is_directory(path)) {
                 fs::create_directory(target_path);
-                copy_directory(path, target_path, preserve_permissions, backup);
+                copy_directory(path, target_path, preserve_permissions, backup, update);
             } else {
+                // 更新模式：只复制源文件比目标文件更新的情况
+                if (update && fs::exists(target_path) && !is_newer(path, target_path)) {
+                    continue;
+                }
+
                 if (backup && fs::exists(target_path)) {
                     fs::copy_file(target_path, target_path.string() + "~", fs::copy_options::overwrite_existing);
                 }
-                if (!clone_file(path.string(), target_path.string())) {
+                if (!clone_file(path, target_path)) {
                     return false;
                 }
+
                 // 保留权限
                 if (preserve_permissions) {
-                    struct stat file_stat;
-                    stat(path.string().c_str(), &file_stat);
-                    chmod(target_path.string().c_str(), file_stat.st_mode);
+                    fs::permissions(target_path, fs::status(path).permissions());
                 }
             }
         }
@@ -64,13 +72,13 @@ bool copy_directory(const fs::path& source, const fs::path& target, bool preserv
 void show_usage(const std::string& program_name) {
     std::cerr << "Usage: " << program_name << " [-a] [-b] [-f] [-i] [-R] [-p] [-u] <source> <target>" << std::endl;
     std::cerr << "Options:" << std::endl;
-    std::cerr << "  -a  Archive mode (not implemented)" << std::endl;
+    std::cerr << "  -a  Archive mode (recursive and preserve permissions)" << std::endl;
     std::cerr << "  -b  Backup existing files" << std::endl;
     std::cerr << "  -f  Force overwrite" << std::endl;
     std::cerr << "  -i  Interactive mode" << std::endl;
     std::cerr << "  -R  Recursive copy" << std::endl;
     std::cerr << "  -p  Preserve file permissions" << std::endl;
-    std::cerr << "  -u  Update only (not implemented)" << std::endl;
+    std::cerr << "  -u  Update only copy newer files" << std::endl;
 }
 
 // 模拟 cp 命令的主函数
@@ -91,19 +99,22 @@ int main(int argc, char* argv[]) {
 
     int i = 1;
     while (i < argc) {
-        if (std::string(argv[i]) == "-a") {
+        std::string arg = argv[i];
+        if (arg == "-a") {
             archive = true;
-        } else if (std::string(argv[i]) == "-b") {
-            backup = true;
-        } else if (std::string(argv[i]) == "-f") {
-            force = true;
-        } else if (std::string(argv[i]) == "-i") {
-            interactive = true;
-        } else if (std::string(argv[i]) == "-R" || std::string(argv[i]) == "-r") {
             recursive = true;
-        } else if (std::string(argv[i]) == "-p") {
             preserve_permissions = true;
-        } else if (std::string(argv[i]) == "-u") {
+        } else if (arg == "-b") {
+            backup = true;
+        } else if (arg == "-f") {
+            force = true;
+        } else if (arg == "-i") {
+            interactive = true;
+        } else if (arg == "-R" || arg == "-r") {
+            recursive = true;
+        } else if (arg == "-p") {
+            preserve_permissions = true;
+        } else if (arg == "-u") {
             update = true;
         } else {
             if (source.empty()) {
@@ -148,7 +159,7 @@ int main(int argc, char* argv[]) {
     // 处理文件或目录
     if (fs::is_directory(source)) {
         if (recursive) {
-            if (!copy_directory(source, target, preserve_permissions, backup)) {
+            if (!copy_directory(source, target, preserve_permissions, backup, update)) {
                 return 1; // 返回错误代码
             }
         } else {
@@ -156,15 +167,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     } else {
+        // 单文件处理
         fs::path target_path = target;
-        if (!clone_file(source.string(), target_path.string())) {
+        if (!clone_file(source, target_path)) {
             return 1; // 返回错误代码
         }
         // 保留权限
         if (preserve_permissions) {
-            struct stat file_stat;
-            stat(source.c_str(), &file_stat);
-            chmod(target_path.string().c_str(), file_stat.st_mode);
+            fs::permissions(target_path, fs::status(source).permissions());
         }
     }
 

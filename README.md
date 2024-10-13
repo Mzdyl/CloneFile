@@ -26,7 +26,7 @@ A simple C++ utility to clone files and directories on macOS using the `clonefil
    ```
 2.	Compile the source code:
    ```bash
-   g++ -o cf cf.cpp -std=c++17 -lstdc++fs
+   g++ -o cf cf.cpp -std=c++17 
    ```
 
 
@@ -38,34 +38,34 @@ The utility can be run from the command line as follows:
 
 Options:
 
-	•	-a: Archive mode (not implemented).
+	•	-a: Archive mode (recursive and preserve permissions).
 	•	-b: Backup existing files before overwriting.
 	•	-f: Force overwrite without prompting.
 	•	-i: Prompt before overwriting existing files.
 	•	-R: Recursively copy directories.
 	•	-p: Preserve file permissions.
-	•	-u: Update only (not implemented).
+	•	-u: Update only.
 
 Examples:
 
-	1.	Clone a single file:
+1.	Clone a single file:
 
-./cf source.txt target.txt
-
-
-	2.	Recursively clone a directory:
-
-./cf -R source_dir/ target_dir/
+	`./cf source.txt target.txt`
 
 
-	3.	Backup existing files:
+2.	Recursively clone a directory:
 
-./cf -b source.txt target.txt
+	`./cf -R source_dir/ target_dir/
 
 
-	4.	Interactive mode:
+3.	Backup existing files:
 
-./cf -i source.txt target.txt
+	`./cf -b source.txt target.txt`
+
+
+4.	Interactive mode:
+
+	`./cf -i source.txt target.txt`
 
 
 
